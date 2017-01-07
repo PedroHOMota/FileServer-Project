@@ -95,7 +95,7 @@ public class WebServer {
 	                
 	                switch (command)
 	                {
-		                case 2:
+		                case 2: //return the list of files
 		                {
 		                	File folder = new File("your/path");
 		                	File[] listFiles = folder.listFiles();
@@ -107,47 +107,34 @@ public class WebServer {
 		                	out.writeObject(aux);
 		                	break;
 		                }
-		                case 3:
+		                case 3: //return the requested file
 		                {
 		                	String name="";
 		                	File folder = new File("your/path");
 		                	File[] listFiles = folder.listFiles();
-		                	String aux="";
+		                	
+		                	folder=null; //setting the variable to null
 		                	for(int i=0;i<listFiles.length;i++)
 		                		if(listFiles[i].getName().matches("")) //Checking if the name of the file exists in the foler
 		                			{ 
 		                				folder=listFiles[i];
 		                				break;
 		                			}
-		                	
 		                	out.writeObject(folder);
 		                	out.flush();
 		                	break;
 		                }
-		                case 4:
-		                {
-		                	in.close();
-		                	out.close();
-		                	run=false;
-		                }
-		                case 5:
-		                {
-		                	out.writeObject("entrou e enviou");
-		                	out.flush();
-		                	log.WriteLog("\nentrou");
-		                	//log.WriteLog("exit");
-		                	
-		                }
-		                case 6:
+		                case 4: //close the socket and stop the loop
 		                {
 		                	String m="[INFO] Closing connection with "+sock.getInetAddress()+" at "+ c.getTime().getHours()+":"+ c.getTime().getMinutes()+
 									" on "+c.get(Calendar.DAY_OF_MONTH)+"/"+c.get(Calendar.MONTH)+1+"/"+c.get(Calendar.YEAR);
 							log.WriteLog(m);
-							log.WriteLog("exit");
 		                	in.close();
 		                	out.close();
-		                	run=false;
+		                	sock.close();
+		                	run=false;	
 		                }
+		                		                	
 	                }
                 } 
             } catch (Exception e) { 
