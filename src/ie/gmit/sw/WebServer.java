@@ -2,7 +2,10 @@ package ie.gmit.sw;
 
 
 import java.io.*; 
-import java.net.*; 
+import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -43,7 +46,7 @@ public class WebServer {
 	}
 	
 	public static void main(String[] args) {
-		//System.out.println(args[0]+" "+args[1]);
+		//new WebServer(args[0],args[1]);
 		//downPath=args[1];
 		new WebServer(7777,"Download");
 	}
@@ -97,7 +100,11 @@ public class WebServer {
 	                {
 		                case 2: //return the list of files
 		                {
-		                	File folder = new File("your/path");
+		                	String m="[INFO] list of available files requested by "+sock.getInetAddress()+" at "+ c.getTime().getHours()+":"+ c.getTime().getMinutes()+
+									" on "+c.get(Calendar.DAY_OF_MONTH)+"/"+c.get(Calendar.MONTH)+1+"/"+c.get(Calendar.YEAR);
+							log.WriteLog(m);
+							
+		                	File folder = new File("C:/Users/Pedro/Desktop/hlp"); 
 		                	File[] listFiles = folder.listFiles();
 		                	String aux="";
 		                	for(int i=0;i<listFiles.length;i++)
@@ -109,18 +116,36 @@ public class WebServer {
 		                }
 		                case 3: //return the requested file
 		                {
-		                	String name="";
-		                	File folder = new File("your/path");
-		                	File[] listFiles = folder.listFiles();
+		                		                	
+		                	String fileName=(String) in.readObject();
 		                	
+		                	String m="[INFO] "+fileName+" requested by "+sock.getInetAddress()+" at "+ c.getTime().getHours()+":"+ c.getTime().getMinutes()+
+									" on "+c.get(Calendar.DAY_OF_MONTH)+"/"+c.get(Calendar.MONTH)+1+"/"+c.get(Calendar.YEAR);
+							log.WriteLog(m);
+							
+		                	File folder = new File("C:/Users/Pedro/Desktop/hlp");
+		                	File[] listFiles = folder.listFiles();
+		                	Path path = null;
+
 		                	folder=null; //setting the variable to null
 		                	for(int i=0;i<listFiles.length;i++)
-		                		if(listFiles[i].getName().matches("")) //Checking if the name of the file exists in the foler
+		                		if(listFiles[i].getName().matches(fileName)) //Checking if the name of the file exists in the foler
 		                			{ 
-		                				folder=listFiles[i];
+		                				path=Paths.get(listFiles[i].getPath());
 		                				break;
 		                			}
-		                	out.writeObject(folder);
+		                	
+		                	if(path==null) //if the file is not found, send 0 to the client and exit 
+		                	{ 
+		                		out.writeInt(0); //send the size of the array
+		                		out.flush(); 
+		                		break;
+		                	}
+		                	byte[] data = Files.readAllBytes(path); //convert the file to byte array
+		                	
+		                	out.writeInt(data.length); //send the size of the array
+		                	out.flush();
+		                	out.write(data); //send the actual array
 		                	out.flush();
 		                	break;
 		                }
@@ -148,7 +173,7 @@ public class WebServer {
 	{
 		private static BlockingQueue<String> q=new ArrayBlockingQueue<String>(50);
 		
-		public void WriteLog(String m) 
+		public void WriteLog(String m)
 		{
 			System.out.println("outro: "+m);
 			try {
@@ -168,7 +193,7 @@ public class WebServer {
             	FileOutputStream fileData=new FileOutputStream("log"+dateFormat.format(date)+".txt",true);
     			BufferedWriter bFile=new BufferedWriter(new FileWriter("log"+dateFormat.format(date)+".txt",true));
 		    			
-				while((msg = q.take())!="exit")
+				while((msg = q.take())!="exit") //keeps running until receives the exit message
 				{ 
 					System.out.println(msg);
 					bFile.append(msg);

@@ -1,6 +1,8 @@
 package ie.gmit.sw;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -10,6 +12,7 @@ public class Client
 {
 	public static void main(String[] args) 
 	{
+		boolean run=true;
 		int option=0;
 		Scanner scan=new Scanner(System.in);
 		Socket s = null; //Connect to the server
@@ -18,8 +21,10 @@ public class Client
 		
 		System.out.println("\tMenu");
 		System.out.println("1-Connect to Server\n2-Print File Listing\n3-Download file\n4-Quit");
-		while(true)
+		while(run)
 		{
+			System.out.println("\tMenu");
+			System.out.println("1-Connect to Server\n2-Print File Listing\n3-Download file\n4-Quit");
 			System.out.println("Enter option: ");
 			option=scan.nextInt();
 			
@@ -29,7 +34,7 @@ public class Client
 					s = new Socket("localhost", 7777);
 					out = new ObjectOutputStream(s.getOutputStream());
 					in = new ObjectInputStream(s.getInputStream());
-					
+					System.out.println("Connection established");
 				}
 				else if(option==2) //Retrieve the list of files available to download
 				{
@@ -42,8 +47,7 @@ public class Client
 				}
 				else if(option==3) //Download the file from the server
 				{
-					Object file;
-					
+
 					out.writeObject(option); //send the option to the server 
 					out.flush();
 					
@@ -52,11 +56,15 @@ public class Client
 					out.writeObject(aux);
 					out.flush();
 					
-					file=in.readObject();
-					if(file!=null) //check if the server returns that the file exists
-					{ 
-						File response =  (File) file; //Deserialise
+					int size=in.readInt();
+					if(size>0) //check if the server returns that the file exists
+					{ 				
+						byte[] response =  new byte[size];
+						in.readFully(response,0,response.length);
+						FileOutputStream fop = new FileOutputStream(new File("C:/Users/Pedro/Desktop/down/"+aux));
+						fop.write(response);
 						System.out.println("File successfully downloaded");
+						fop.close();
 					}
 					else
 					{
@@ -70,6 +78,7 @@ public class Client
 					in.close();
 					out.close();
 					s.close();
+					run=false;
 				}
 			}catch(Exception e) //If the user try to communicate with the server before connection this catch will ask the user to connect first
 			{
