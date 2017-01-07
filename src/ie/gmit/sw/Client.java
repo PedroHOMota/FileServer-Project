@@ -13,8 +13,8 @@ public class Client
 		int option=0;
 		Scanner scan=new Scanner(System.in);
 		Socket s = null; //Connect to the server
-		ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
-		ObjectInputStream in = new ObjectInputStream(s.getInputStream());
+		ObjectOutputStream out;
+		ObjectInputStream in;
 		
 		System.out.println("\tMenu");
 		System.out.println("1-Connect to Server\n2-Print File Listing\n3-Download file\n4-Quit");
@@ -26,11 +26,13 @@ public class Client
 			
 			if(option==1) //Open the connection with the server 
 			{
-				s = new Socket("localhost", 8080);
-				s.close();
+				s = new Socket("localhost", 7777);
+				
 			}
 			else if(option==2) //Retrieve the list of files available to download
 			{
+				out = new ObjectOutputStream(s.getOutputStream());
+				in = new ObjectInputStream(s.getInputStream());
 				out.writeObject(option); //send the option to the server 
 				out.flush(); 	
 				
@@ -40,6 +42,8 @@ public class Client
 			}
 			else if(option==3) //Download the file from the server
 			{
+				out = new ObjectOutputStream(s.getOutputStream());
+				in = new ObjectInputStream(s.getInputStream());
 				System.out.println("Enter the file name: ");
 				String aux=scan.next();
 				out.writeObject(aux);
@@ -55,6 +59,13 @@ public class Client
 					System.out.println("File not found");
 				}
 				
+			}
+			else if(option==5)
+			{
+				out = new ObjectOutputStream(s.getOutputStream());
+				in = new ObjectInputStream(s.getInputStream());
+				out.writeObject(5);
+				System.out.println(in.readObject());
 			}
 			else //Close the connection with the server and finish the program
 			{

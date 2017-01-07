@@ -20,7 +20,9 @@ import java.net.*; //Contains basic networking classes
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 public class WebServer {
@@ -28,20 +30,27 @@ public class WebServer {
 	
 	private BlockingQueue<String> queue;
 	
-	private static final int SERVER_PORT = 8080;  
-	
 	private volatile boolean keepRunning = true;
 	
-	private WebServer(){
+	private static final int SERVER_PORT = 7777;
+	
+	private static String downPath="";
+	
+	private Calendar c = Calendar.getInstance();
+	
+	private WebServer(int port,String path){
 		try { //Try the following. If anything goes wrong, the error will be passed to the catch block
 			
-			ss = new ServerSocket(SERVER_PORT); //Start the server socket listening on port 8080
+			ss = new ServerSocket(port); //Start the server socket listening on port 8080
 			System.out.println(ss.getLocalSocketAddress()+" "+ss.getInetAddress());
 			Thread server = new Thread(new Listener(), "Web Server Listener"); //We can also name threads
 			server.setPriority(Thread.MAX_PRIORITY); //Ask the Thread Scheduler to run this thread as a priority
 			server.start(); //The Hollywood Principle - Don't call us, we'll call you
 			
 			System.out.println("Server started and listening on port " + SERVER_PORT);
+			
+			Thread logger=new Thread(new Logger());
+			logger.start();
 			
 		} catch (IOException e) { //Something nasty happened. We should handle error gracefully, i.e. not like this...
 			System.out.println("Yikes! Something bad happened..." + e.getMessage());
@@ -50,26 +59,27 @@ public class WebServer {
 	
 	//A main method is required to start a standard Java application
 	public static void main(String[] args) {
-		new WebServer();
+		//System.out.println(args[0]+" "+args[1]);
+		//downPath=args[1];
+		new WebServer(7777,"Download");
 	}
 	
 	
-	
-	/* The inner class Listener is a Runnable, i.e. a job that can be given to a Thread. The job that
-	 * the class has been given is to intercept incoming client requests and farm them out to other
-	 * threads. Each client request is in the form of a socket and will be handled by a separate new thread.
-	 */
-	private class Listener implements Runnable{ //A Listener IS-A Runnable
-		
-		//The interface Runnable declare the method "public void run();" that must be implemented
+	private class Listener implements Runnable{
+		private int counter=0;
+		private Logger log=new Logger();
 		public void run() {
-			int counter = 0; //A counter to track the number of requests
-			while (keepRunning){ //Loop will keepRunning is true. Note that keepRunning is "volatile"
+			while (keepRunning){
 				try { //Try the following. If anything goes wrong, the error will be passed to the catch block
 					
 					Socket s = ss.accept(); //This is a blocking method, causing this thread to stop and wait here for an incoming request
-					new Thread(new HTTPRequest(s), "T-" + counter).start(); 
-					counter++; 
+					
+					String m="[INFO] Listing request by "+s.getInetAddress()+" at "+ c.getTime().getHours()+":"+ c.getTime().getMinutes()+
+							" on "+c.get(Calendar.DAY_OF_MONTH)+"/"+c.get(Calendar.MONTH)+1+"/"+c.get(Calendar.YEAR);
+					log.WriteLog(m);
+					new Thread(new Request(s), "T-"+counter).start(); 
+					
+					counter++;
 				} catch (IOException e) { 
 					System.out.println("Error handling incoming request..." + e.getMessage());
 				}
@@ -77,11 +87,13 @@ public class WebServer {
 		}
 	}
 	
-	private class HTTPRequest implements Runnable
+	private class Request implements Runnable
 	{
 		private Socket sock; 
+		private boolean run=true;
+		private Logger log=new Logger();
 		
-		private HTTPRequest(Socket request) {
+		private Request(Socket request) {
 			this.sock = request; 
 		}
 
@@ -93,7 +105,7 @@ public class WebServer {
                 ObjectInputStream in = new ObjectInputStream(sock.getInputStream());
                 int command=0;
                 
-                while(true)
+                while(run)
                 {
 	                command = (int)in.readObject();
 	                
@@ -128,14 +140,29 @@ public class WebServer {
 		                	out.flush();
 		                	break;
 		                }
+		                case 4:
+		                {
+		                	in.close();
+		                	out.close();
+		                	run=false;
+		                }
 		                case 5:
 		                {
-		                	System.out.println("teste");
-		                	//in.close();
-		                	out.writeObject("idiota");
+		                	out.writeObject("entrou e enviou");
 		                	out.flush();
-		                	//out.close();
-		                	//this.finalize();
+		                	log.WriteLog("\nentrou");
+		                	//log.WriteLog("exit");
+		                	
+		                }
+		                case 6:
+		                {
+		                	String m="[INFO] Closing connection with "+sock.getInetAddress()+" at "+ c.getTime().getHours()+":"+ c.getTime().getMinutes()+
+									" on "+c.get(Calendar.DAY_OF_MONTH)+"/"+c.get(Calendar.MONTH)+1+"/"+c.get(Calendar.YEAR);
+							log.WriteLog(m);
+							log.WriteLog("exit");
+		                	in.close();
+		                	out.close();
+		                	run=false;
 		                }
 	                }
                 } 
@@ -146,17 +173,13 @@ public class WebServer {
         }
 	}//End of inner class HTTPRequest
 
-	static class Queue implements Runnable
+	static class Logger implements Runnable
 	{
-		private static BlockingQueue<String> q;
-		
-		public Queue(BlockingQueue q)
-		{
-			this.q=q;
-		}
+		private static BlockingQueue<String> q=new ArrayBlockingQueue<String>(50);
 		
 		public void WriteLog(String m) 
 		{
+			System.out.println("outro: "+m);
 			try {
 				q.put(m);
 			} catch (InterruptedException e) {
@@ -166,18 +189,24 @@ public class WebServer {
 
 		public void run()
 		{
-			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 			Date date = new Date();
 			String msg="";
             try 
             {
-    			BufferedWriter bFile=new BufferedWriter(new FileWriter("log"+dateFormat.format(date)+".txt"));
-
+            	FileOutputStream fileData=new FileOutputStream("log"+dateFormat.format(date)+".txt",true);
+    			BufferedWriter bFile=new BufferedWriter(new FileWriter("log"+dateFormat.format(date)+".txt",true));
+		    			
 				while((msg = q.take())!="exit")
 				{ 
+					System.out.println(msg);
 					bFile.append(msg);
+					bFile.newLine();
+					bFile.flush();
 				}
+				System.out.println("out");
 				bFile.close();
+				fileData.close();
 			} 
             catch (InterruptedException | IOException e) 
             {
