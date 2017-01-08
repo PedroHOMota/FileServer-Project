@@ -3,24 +3,35 @@ package ie.gmit.sw;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
 
+import javax.naming.Context;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
 public class Client 
 {
-	public static void main(String[] args) 
+	public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException 
 	{
 		boolean run=true;
 		int option=0;
+		Parser p=new Parser();
 		Scanner scan=new Scanner(System.in);
 		Socket s = null; //Connect to the server
 		ObjectOutputStream out=null;
 		ObjectInputStream in=null;
-		
-		System.out.println("\tMenu");
-		System.out.println("1-Connect to Server\n2-Print File Listing\n3-Download file\n4-Quit");
+		//System.out.println(p.folder);
 		while(run)
 		{
 			System.out.println("\tMenu");
@@ -31,7 +42,7 @@ public class Client
 			try{
 				if(option==1) //Open the connection with the server 
 				{
-					s = new Socket("localhost", 7777);
+					s = new Socket(p.getIp(), p.getPort());
 					out = new ObjectOutputStream(s.getOutputStream());
 					in = new ObjectInputStream(s.getInputStream());
 					System.out.println("Connection established");
@@ -61,7 +72,7 @@ public class Client
 					{ 				
 						byte[] response =  new byte[size];
 						in.readFully(response,0,response.length);
-						FileOutputStream fop = new FileOutputStream(new File("C:/Users/Pedro/Desktop/down/"+aux));
+						FileOutputStream fop = new FileOutputStream(new File(p.getFolder()+aux));
 						fop.write(response);
 						System.out.println("File successfully downloaded");
 						fop.close();
@@ -87,5 +98,37 @@ public class Client
 
 		}
 		
+	}
+}
+
+class Parser
+{
+	String ip;
+	int port;
+	String folder;
+	
+	public Parser() throws ParserConfigurationException, SAXException, IOException
+	{
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(new File("Connection.xml"));
+		Element root = doc.getDocumentElement();
+		NodeList children=root.getChildNodes();
+
+		ip=children.item(1).getTextContent();
+		port=Integer.parseInt(children.item(3).getTextContent());
+		folder=children.item(5).getTextContent();
+	}
+	public String getIp()
+	{
+		return ip;
+	}
+	public int getPort()
+	{
+		return port;
+	}
+	public String getFolder()
+	{
+		return folder;
 	}
 }
