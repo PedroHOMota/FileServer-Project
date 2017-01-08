@@ -1,16 +1,13 @@
 package ie.gmit.sw;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
 
-import javax.naming.Context;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -72,7 +69,14 @@ public class Client
 					{ 				
 						byte[] response =  new byte[size];
 						in.readFully(response,0,response.length);
-						FileOutputStream fop = new FileOutputStream(new File(p.getFolder()+aux));
+						FileOutputStream fop=null;
+						try{
+						fop = new FileOutputStream(new File(p.getFolder()+aux));
+						}catch(Exception e)
+						{
+							new File(p.getFolder()).mkdir();
+							fop = new FileOutputStream(new File(p.getFolder()+aux));
+						}
 						fop.write(response);
 						System.out.println("File successfully downloaded");
 						fop.close();
@@ -85,11 +89,15 @@ public class Client
 				}
 				else //Close the connection with the server and finish the program
 				{
+					scan.close();
+					run=false;
+					try{
 					out.writeObject(4); //tell the server to close the connection
 					in.close();
 					out.close();
 					s.close();
-					run=false;
+					}catch(Exception e){}
+					
 				}
 			}catch(Exception e) //If the user try to communicate with the server before connection this catch will ask the user to connect first
 			{
