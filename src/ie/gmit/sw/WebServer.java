@@ -190,7 +190,6 @@ public class WebServer {
 		
 		public void WriteLog(String m)
 		{
-			System.out.println("outro: "+m);
 			try {
 				q.put(m);
 			} catch (InterruptedException e) {
